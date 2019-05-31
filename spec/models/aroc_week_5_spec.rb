@@ -11,7 +11,7 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
 # ----------------------
 
 
-  it '26. returns the names of items that are associated with one or more orders' do
+  xit '26. returns the names of items that are associated with one or more orders' do
     unordered_item_1 = create(:item, name: 'Unordered Item_1')
     unordered_item_2 = create(:item, name: 'Unordered Item_2')
     unordered_item_3 = create(:item, name: 'Unordered Item_3')
@@ -19,21 +19,22 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     unordered_items = [unordered_item_1, unordered_item_2, unordered_item_3, @item_6.name]
     expected_result = ['Abercrombie', 'Banana Republic', 'Calvin Klein', 'Dickies', 'Eddie Bauer', 'Fox', 'Giorgio Armani', 'Izod', 'J.crew']
 
+   ordered_item_names = Item.select(:name)
     # ----------------------- Using Ruby -------------------------
-    items = Item.all
-
-    ordered_items = items.map do |item|
-      item if item.orders.present?
-    end.compact
-
-    ordered_items_names = ordered_items.map(&:name)
-    ordered_items_names.sort
+    # items = Item.all
+    #
+    # ordered_items = items.map do |item|
+    #   item if item.orders.present?
+    # end.compact
+    #
+    # ordered_items_names = ordered_items.map(&:name)
+    # ordered_items_names.sort
     # ------------------------------------------------------------
 
     # ------------------ ActiveRecord Solution ----------------------
-    # Solution goes here
-    # When you find a solution, experiment with adjusting your method chaining
-    # Which ones are you able to switch around without relying on Ruby's Enumerable methods?
+    ordered_items_names = Item.joins(:orders).distinct.order(:name).pluck(:name)
+    Item.joins(:order_items).distinct(:name).order(:name).pluck(:name)
+
     # ---------------------------------------------------------------
 
     # Expectations
@@ -53,7 +54,9 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     # Zoolander      |         6
 
     # ------------------ ActiveRecord Solution ----------------------
-    custom_results = []
+
+    custom_results = User.select("users.name, COUNT(orders.id) AS total_order_count").joins(:orders).group(:name).order("total_order_count")
+
     # ---------------------------------------------------------------
 
     expect(custom_results[0].name).to eq(@user_3.name)
@@ -76,7 +79,9 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     # Zoolander       |         24
 
     # ------------------ ActiveRecord Solution ----------------------
-    custom_results = []
+
+    custom_results = User.select("users.name, COUNT(order_items.id) as total_item_count").joins(:order_items).group("users.name").order("users.name")
+
     # ---------------------------------------------------------------
 
     expect(custom_results[0].name).to eq(@user_2.name)
@@ -122,7 +127,13 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     # how will you turn this into the proper ActiveRecord commands?
 
     # ------------------ ActiveRecord Solution ----------------------
-    data = []
+    data =  User.joins(:orders)
+    .joins("join order_items on orders.id = order_items.order_id")
+    .select("users.name as user_name, orders.id as order_id, orders.amount/COUNT(order_items.id) as avg_item_cost")
+    .group(:user_name, :order_id)
+    .order("user_name desc")
+    .order("avg_item_cost asc")
+
     # ---------------------------------------------------------------
 
     expect([data[0].user_name,data[0].order_id,data[0].avg_item_cost]).to eq([@user_1.name, @order_1.id, 50])
@@ -142,7 +153,7 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     expect([data[14].user_name,data[14].order_id,data[14].avg_item_cost]).to eq([@user_2.name, @order_14.id, 225])
   end
 
-  xit '30. returns the names of items that have been ordered without n+1 queries' do
+  it '30. returns the names of items that have been ordered without n+1 queries' do
     # What is an n+1 query?
     # This video is older, but the concepts explained are still relevant:
     # http://railscasts.com/episodes/372-bullet
@@ -153,7 +164,7 @@ describe 'ActiveRecord Obstacle Course, Week 5' do
     Bullet.start_request
 
     # ------------------------------------------------------
-    orders = Order.all # Edit only this line
+    orders = Order.joins(:items).select("items.name")
     # ------------------------------------------------------
 
     # Do not edit below this line
